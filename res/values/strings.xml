@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">eclo AR</string>
+    <string name="metaioSDKSignature">g2ofq70ZiXzyGyMkgY/hdCISCqejaceSRgvsl+6OEjs=</string>
+    <string name="airvantage_clientId">be1a35d64b6547aa8dd0a8a8f90a68dc</string>
+    <string name="airvantage_clientSecret">697ae4e54e7d4e0d976f313871a63c89</string> 
+
+	<string name="app_id">559736607426632</string>
+	<string name="pref_login">login</string>
+	<string name="pref_password">password</string>
+</resources>

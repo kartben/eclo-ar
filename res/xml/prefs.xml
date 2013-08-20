@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <PreferenceCategory android:title="Credentials" >
+        <EditTextPreference
+            android:key="@string/pref_login"
+            android:title="Login" />
+        <EditTextPreference
+            android:inputType="textPassword"
+            android:key="@string/pref_password"
+            android:title="Password" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Systems" >
+        <EditTextPreference
+            android:defaultValue="9dd4264bf5dd491da73791dce4275b3b"
+            android:key="system-COS1"
+            android:summary="Greenhouse associated to marker #1"
+            android:title="ID1" />
+        <EditTextPreference
+            android:defaultValue="9dd4264bf5dd491da73791dce4275b3b"
+            android:key="system-COS2"
+            android:summary="Greenhouse associated to marker #2"
+            android:title="ID2" />
+        </PreferenceCategory>
+
+</PreferenceScreen>

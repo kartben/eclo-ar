@@ -1,0 +1,33 @@
+* {
+	-webkit-highlight: none;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none
+}
+
+html, body {
+	margin: 0;
+	padding: 0;
+	/* -webkit-text-size-adjust: 100%; */
+	background-color: transparent
+}
+
+/* Note "Please hold your device over the metaio pattern." */
+#info {
+	clear: both;
+	width: 60%;
+	color: #fff;
+	background-color: #000;
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	font-weight: bold;
+	font-family: Helvetica, Arial, sans-serif;
+	margin: 100px 20% 0px 20%;
+	padding: 10px 0px 10px 0px;
+	text-align: center;
+	opacity: 0.6;
+	display: none
+}
+
+#info img {
+	max-width: 100%
+}
