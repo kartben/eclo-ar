@@ -3,6 +3,7 @@ package net.airvantage.eclo;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -39,6 +40,7 @@ import android.graphics.Paint.Align;
 import android.graphics.Typeface;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Size;
+import android.media.MediaPlayer;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceFragment;
@@ -279,6 +281,8 @@ public class MainActivity extends ARViewActivity implements
 	private IGeometry facebookButtonModel;
 
 	public Bitmap screenshot;
+
+	private MediaPlayer mMediaPlayer;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -550,10 +554,14 @@ public class MainActivity extends ARViewActivity implements
 									.getAssetPath("facebook.png"));
 					facebookButtonModel.setName(FACEBOOK_BUTTON);
 					facebookButtonModel.setScale(.7f);
-					facebookButtonModel.setRotation(new Rotation(new Vector3d(
-							-(float) (Math.PI / 2), 0f, 0f)));
-					facebookButtonModel.setTranslation(new Vector3d(-60f, 0,
-							60f));
+					// facebookButtonModel.setRotation(new Rotation(new
+					// Vector3d(
+					// -(float) (Math.PI / 2), 0f, 0f)));
+					// facebookButtonModel.setTranslation(new Vector3d(-60f, 0,
+					// 60f));
+
+					facebookButtonModel.setTranslation(new Vector3d(190f, 30,
+							150f));
 				}
 				facebookButtonModel.setVisible(true);
 			} else if (facebookButtonModel != null)
@@ -689,6 +697,13 @@ public class MainActivity extends ARViewActivity implements
 	@Override
 	protected void loadContents() {
 		try {
+			// switch sound preparation
+			mMediaPlayer = new MediaPlayer();
+			FileInputStream fis = new FileInputStream(
+					AssetsManager.getAssetPath("switch.wav"));
+			mMediaPlayer.setDataSource(fis.getFD());
+			mMediaPlayer.prepare();
+			fis.close();
 
 			// Load desired tracking data for planar marker tracking
 			trackingConfigFile = AssetsManager
@@ -721,9 +736,23 @@ public class MainActivity extends ARViewActivity implements
 	}
 
 	@Override
-	protected void onGeometryTouched(IGeometry geometry) {
+	protected void onGeometryTouched(final IGeometry geometry) {
 		if (SWITCH_BUTTON.equals(geometry.getName())) {
-			geometry.setRotation(new Rotation(0f, 0f, (float) (Math.PI)), true);
+			GreenhouseM2MSystem gh = mGreenhousesByCosName.get(mActiveCosName);
+			m2mClient.sendData(gh, "switch", "1", new ICallback() {
+				@Override
+				public void onSuccess() {
+					mMediaPlayer.start();
+					geometry.setRotation(
+							new Rotation(0f, 0f, (float) (Math.PI)), true);
+				}
+
+				@Override
+				public void onError(String errorDetails, Throwable t) {
+					Log.d(getPackageName(), errorDetails, t);
+				}
+			});
+
 			return;
 		}
 
@@ -965,6 +994,14 @@ public class MainActivity extends ARViewActivity implements
 	@Override
 	public void valueChanged(IM2MSystem system, String path, String newValue) {
 		SensorButton button = mButtonsByGreenhouse.get(system).get(path);
+
+		if (button == null) {
+			// this is a value for which we don't have a visual button
+
+			// TODO if path == switch then update the switch asynchronously
+			// instead?
+			return;
+		}
 
 		if (button.texturePath != null) {
 			File file = new File(button.texturePath);
