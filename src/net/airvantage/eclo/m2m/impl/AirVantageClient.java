@@ -147,8 +147,23 @@ public class AirVantageClient implements IM2MClient {
 		});
 	}
 
+	@Override
+	public void sendData(IM2MSystem system, String path, String value, ICallback callback) {
+		// TODO!!
+	}
+	
 	public boolean isAuthentified() {
 		return access_token != null;
+	}
+	
+	@Override
+	public boolean supportsUnsollicitedResponses() {
+		return false;
+	}
+	
+	@Override
+	public List<IM2MSystem> getMonitoredSystems() {
+		return Collections.emptyList();
 	}
 
 	private static String arrayToCommaSeparatedList(String[] dataPathsArray) {
@@ -161,14 +176,6 @@ public class AirVantageClient implements IM2MClient {
 			sb.deleteCharAt(sb.length() - 1);
 		return sb.toString();
 	}
-
-	@Override
-	public boolean supportsUnsollicitedResponses() {
-		return false;
-	}
-
-	@Override
-	public List<IM2MSystem> getMonitoredSystems() {
-		return Collections.emptyList();
-	}
+	
+	
 }

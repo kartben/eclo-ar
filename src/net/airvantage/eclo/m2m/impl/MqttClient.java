@@ -12,6 +12,7 @@ import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.MqttPersistenceException;
 
 import android.util.Log;
 
@@ -72,13 +73,27 @@ public class MqttClient implements IM2MClient, MqttCallback {
 	}
 
 	@Override
-	public void connectionLost(Throwable arg0) {
-		// ignore
+	public void sendData(IM2MSystem system, String path, String value,
+			ICallback callback) {
+		try {
+			mqttClient.publish(nameSpace + "/" + system.getSystemDetails().uid
+					+ "/" + path, value.getBytes(), 0, false);
+			callback.onSuccess();
+		} catch (MqttPersistenceException e) {
+			callback.onError(e.getMessage(), e);
+		} catch (MqttException e) {
+			callback.onError(e.getMessage(), e);
+		}
 	}
 
 	@Override
-	public void deliveryComplete(IMqttDeliveryToken arg0) {
-		// ignore
+	public void connectionLost(Throwable t) {
+		Log.d("MqttClient", t.getMessage(), t);
+	}
+
+	@Override
+	public void deliveryComplete(IMqttDeliveryToken t) {
+		Log.d("MqttClient", "deliveryComplete");
 	}
 
 	@Override
