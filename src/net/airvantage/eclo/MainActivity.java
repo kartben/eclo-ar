@@ -990,8 +990,12 @@ public class MainActivity extends ARViewActivity implements
 		try {
 			long start = System.currentTimeMillis();
 			final String texturepath = getCacheDir() + "/"
-					+ type.toString().toLowerCase()
-					+ System.currentTimeMillis() + ".png";
+					+ (type.toString() + value).hashCode() + ".png";
+
+			if (new File(texturepath).exists())
+				return texturepath;
+
+			// TODO garbage collect old images (in a dedicated thread?)
 
 			// Load background image and make a mutable copy
 			Bitmap backgroundImage = BitmapFactory.decodeFile(AssetsManager
