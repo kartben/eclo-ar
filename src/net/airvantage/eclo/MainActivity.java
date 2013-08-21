@@ -64,6 +64,7 @@ import com.loopj.android.http.BinaryHttpResponseHandler;
 import com.metaio.sdk.ARViewActivity;
 import com.metaio.sdk.MetaioDebug;
 import com.metaio.sdk.jni.IGeometry;
+import com.metaio.sdk.jni.IGeometryVector;
 import com.metaio.sdk.jni.IMetaioSDKCallback;
 import com.metaio.sdk.jni.ImageStruct;
 import com.metaio.sdk.jni.Rotation;
@@ -74,11 +75,6 @@ import com.metaio.tools.io.AssetsManager;
 
 public class MainActivity extends ARViewActivity implements
 		OnSharedPreferenceChangeListener, IValueChangedListener {
-	public String[] MONITORED_PATHS = new String[] {
-			"demohouse.ff.bathroom.temperature",
-			"demohouse.gf.toilet.temperature",
-			"demohouse.gf.corridor.temperature" };
-
 	private static final String SWITCH_BUTTON = "switch-button";
 
 	private static final String FACEBOOK_BUTTON = "facebook-button";
@@ -120,8 +116,10 @@ public class MainActivity extends ARViewActivity implements
 				if (system == null)
 					continue;
 
-				m2mClient.updateSystemData(system, MONITORED_PATHS,
-						new ICallback() {
+				m2mClient.updateSystemData(
+						system,
+						mButtonsByGreenhouse.get(system).keySet()
+								.toArray(new String[0]), new ICallback() {
 
 							@Override
 							public void onSuccess() {
@@ -133,22 +131,22 @@ public class MainActivity extends ARViewActivity implements
 							}
 						});
 
-				for (final String path : MONITORED_PATHS) {
-					m2mClient.updateSystemLast24HrsData(system, path,
-							new ICallback() {
-								@Override
-								public void onSuccess() {
-									updateHistoricalGraph(mButtonsByGreenhouse
-											.get(system).get(path), system
-											.getLast24HrsHistoricalValue(path));
-								}
-
-								@Override
-								public void onError(String errorDetails,
-										Throwable t) {
-								}
-							});
-				}
+				// for (final String path : MONITORED_PATHS) {
+				// m2mClient.updateSystemLast24HrsData(system, path,
+				// new ICallback() {
+				// @Override
+				// public void onSuccess() {
+				// updateHistoricalGraph(mButtonsByGreenhouse
+				// .get(system).get(path), system
+				// .getLast24HrsHistoricalValue(path));
+				// }
+				//
+				// @Override
+				// public void onError(String errorDetails,
+				// Throwable t) {
+				// }
+				// });
+				// }
 
 			}
 		}
@@ -309,6 +307,9 @@ public class MainActivity extends ARViewActivity implements
 		mTypeFace = Typeface.createFromAsset(getAssets(),
 				"digital_counter_7.ttf");
 
+		PreferenceManager.getDefaultSharedPreferences(MainActivity.this)
+				.registerOnSharedPreferenceChangeListener(MainActivity.this);
+
 		// Display the fragment as the main content.
 		getFragmentManager().beginTransaction()
 				.replace(android.R.id.content, new SettingsFragment()).commit();
@@ -351,20 +352,59 @@ public class MainActivity extends ARViewActivity implements
 				.getDefaultSharedPreferences(this);
 
 		synchronized (mGreenhousesByCosName) {
+			for (GreenhouseM2MSystem gh : mGreenhousesByCosName.values()) {
+				gh.removeValueChangedListener(this);
+			}
 			mGreenhousesByCosName.clear();
+
+			for (Map<String, SensorButton> buttonsMap : mButtonsByGreenhouse
+					.values()) {
+				for (SensorButton b : buttonsMap.values()) {
+					if (b.chartModel != null) {
+						b.chartModel.setVisible(false);
+						b.chartModel.delete();
+					}
+
+					if (b.model != null) {
+						b.model.setVisible(false);
+						b.model.delete();
+					}
+				}
+
+			}
+
+			mButtonsByGreenhouse.clear();
+
 			GreenhouseM2MSystem greenhouseM2MSystem;
+			for (int i = 1; i <= 2; i++) {
+				greenhouseM2MSystem = new GreenhouseM2MSystem(prefs.getString(
+						"system-COS" + i, "9dd4264bf5dd491da73791dce4275b3b"));
+				mGreenhousesByCosName.put("COS" + i, greenhouseM2MSystem);
+				greenhouseM2MSystem.addValueChangedListener(this);
+				Map<String, SensorButton> buttonsMap = new HashMap<String, SensorButton>();
 
-			greenhouseM2MSystem = new GreenhouseM2MSystem(prefs.getString(
-					"system-COS1", "9dd4264bf5dd491da73791dce4275b3b"));
-			mGreenhousesByCosName.put("COS1", greenhouseM2MSystem);
-			greenhouseM2MSystem.addValueChangedListener(this);
-			initButtons(greenhouseM2MSystem);
+				for (int j = 1; j <= 3; j++) {
+					String path = prefs.getString("system-COS" + i + "-sensor"
+							+ j + "-path", null);
+					String type = prefs.getString("system-COS" + i + "-sensor"
+							+ j + "-type", "GENERIC");
 
-			greenhouseM2MSystem = new GreenhouseM2MSystem(prefs.getString(
-					"system-COS2", "9dd4264bf5dd491da73791dce4275b3b"));
-			mGreenhousesByCosName.put("COS2", greenhouseM2MSystem);
-			greenhouseM2MSystem.addValueChangedListener(this);
-			initButtons(greenhouseM2MSystem);
+					Log.d("", path + "-" + type);
+
+					if (path != null) {
+						buttonsMap.put(path, new SensorButton("button-" + j,
+								SENSOR_TYPE.valueOf(type)));
+					}
+					IGeometryVector g = metaioSDK.getLoadedGeometries();
+					for (int ii = 0; ii < g.size(); ii++) {
+						Log.d("geometry", g.toString() + " -- "
+								+ g.get(ii).getName());
+					}
+
+				}
+
+				mButtonsByGreenhouse.put(greenhouseM2MSystem, buttonsMap);
+			}
 
 			if (m2mClient.supportsUnsollicitedResponses()) {
 				m2mClient.getMonitoredSystems().clear();
@@ -372,19 +412,6 @@ public class MainActivity extends ARViewActivity implements
 						mGreenhousesByCosName.values());
 			}
 		}
-	}
-
-	private void initButtons(GreenhouseM2MSystem greenhouseM2MSystem) {
-		Map<String, SensorButton> buttonsMap = new HashMap<String, SensorButton>();
-
-		buttonsMap.put(MONITORED_PATHS[0], new SensorButton("temperature",
-				SENSOR_TYPE.TEMPERATURE));
-		buttonsMap.put(MONITORED_PATHS[1], new SensorButton("luminosity",
-				SENSOR_TYPE.LUMINOSITY));
-		buttonsMap.put(MONITORED_PATHS[2], new SensorButton("humidity",
-				SENSOR_TYPE.HUMIDITY));
-
-		mButtonsByGreenhouse.put(greenhouseM2MSystem, buttonsMap);
 	}
 
 	/**
@@ -472,16 +499,11 @@ public class MainActivity extends ARViewActivity implements
 		}
 
 		uiHelper.onResume();
-
-		PreferenceManager.getDefaultSharedPreferences(MainActivity.this)
-				.registerOnSharedPreferenceChangeListener(MainActivity.this);
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		PreferenceManager.getDefaultSharedPreferences(this)
-				.unregisterOnSharedPreferenceChangeListener(this);
 		if (mButtonsGenerationHandler != null)
 			mButtonsGenerationHandler.cancel();
 		uiHelper.onPause();
@@ -490,6 +512,8 @@ public class MainActivity extends ARViewActivity implements
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
+		PreferenceManager.getDefaultSharedPreferences(this)
+				.unregisterOnSharedPreferenceChangeListener(this);
 		uiHelper.onDestroy();
 	}
 
@@ -510,11 +534,15 @@ public class MainActivity extends ARViewActivity implements
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
+		SharedPreferences prefs;
 		switch (item.getItemId()) {
 
 		case R.id.menu_settings:
 			Intent i = new Intent(this, SettingsActivity.class);
 			startActivityForResult(i, 1);
+			prefs = PreferenceManager.getDefaultSharedPreferences(this);
+			prefs.registerOnSharedPreferenceChangeListener(this);
+
 			break;
 
 		}
@@ -536,6 +564,8 @@ public class MainActivity extends ARViewActivity implements
 			if (!m2mClient.isAuthentified()) {
 				finish();
 			}
+			// TODO remove
+			initGreenhouses();
 			return;
 		}
 
@@ -599,8 +629,8 @@ public class MainActivity extends ARViewActivity implements
 				} else {
 					// update texture with new image
 					if (button.texturesNeedRefresh) {
-						MetaioDebug.log("refresh texture for button "
-								+ button.name);
+						// MetaioDebug.log("refresh texture for button "
+						// + button.name);
 						button.model.setTexture(button.texturePath);
 						button.texturesNeedRefresh = false;
 					}
@@ -644,6 +674,9 @@ public class MainActivity extends ARViewActivity implements
 	}
 
 	private void animate(Collection<SensorButton> buttons, SensorButton button) {
+		if (button.chartModel == null)
+			return;
+
 		if (button.timeLinePos == 0
 				&& button.direction == SensorButton.DIRECTION.BUTTON_TO_CHART) {
 			button.chartModel.setVisible(true);
@@ -944,7 +977,7 @@ public class MainActivity extends ARViewActivity implements
 			m2mClient = createM2MClient();
 		}
 
-		if ("system-COS1".equals(key) || "system-COS2".equals("key"))
+		if (key.startsWith("system-COS"))
 			initGreenhouses();
 
 	}
@@ -1032,6 +1065,9 @@ public class MainActivity extends ARViewActivity implements
 	private String createTexture(SENSOR_TYPE type, String value) {
 		try {
 			long start = System.currentTimeMillis();
+
+			Log.d(getPackageName(), type.toString() + value);
+
 			final String texturepath = getCacheDir() + "/"
 					+ (type.toString() + value).hashCode() + ".png";
 

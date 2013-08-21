@@ -6,7 +6,7 @@ import com.metaio.sdk.jni.Vector3d;
 public class SensorButton {
 
 	public enum SENSOR_TYPE {
-		TEMPERATURE("°C"), LUMINOSITY("lx"), HUMIDITY("%");
+		TEMPERATURE("°C"), LUMINOSITY("lx"), HUMIDITY("%"), GENERIC("");
 
 		String unit;
 

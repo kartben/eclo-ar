@@ -11,16 +11,88 @@
             android:title="Password" />
     </PreferenceCategory>
     <PreferenceCategory android:title="Systems" >
-        <EditTextPreference
-            android:defaultValue="9dd4264bf5dd491da73791dce4275b3b"
-            android:key="system-COS1"
-            android:summary="Greenhouse associated to marker #1"
-            android:title="ID1" />
-        <EditTextPreference
-            android:defaultValue="9dd4264bf5dd491da73791dce4275b3b"
-            android:key="system-COS2"
-            android:summary="Greenhouse associated to marker #2"
-            android:title="ID2" />
-        </PreferenceCategory>
+        <PreferenceScreen android:title="System #1" >
+            <EditTextPreference
+                android:defaultValue="9dd4264bf5dd491da73791dce4275b3b"
+                android:key="system-COS1"
+                android:summary="Unique id. of the system associated to COS1 marker"
+                android:title="ID1" />
+
+            <PreferenceCategory android:title="Sensor #1" >
+                <EditTextPreference
+                    android:key="system-COS1-sensor1-path"
+                    android:title="Path" />
+
+                <ListPreference
+                    android:entries="@array/sensor_types"
+                    android:entryValues="@array/sensor_types_keys"
+                    android:key="system-COS1-sensor1-type"
+                    android:title="Type" />
+            </PreferenceCategory>
+            <PreferenceCategory android:title="Sensor #2" >
+                <EditTextPreference
+                    android:key="system-COS1-sensor2-path"
+                    android:title="Path" />
+
+                <ListPreference
+                    android:entries="@array/sensor_types"
+                    android:entryValues="@array/sensor_types_keys"
+                    android:key="system-COS1-sensor2-type"
+                    android:title="Type" />
+            </PreferenceCategory>
+            <PreferenceCategory android:title="Sensor #3" >
+                <EditTextPreference
+                    android:key="system-COS1-sensor3-path"
+                    android:title="Path" />
+
+                <ListPreference
+                    android:entries="@array/sensor_types"
+                    android:entryValues="@array/sensor_types_keys"
+                    android:key="system-COS1-sensor3-type"
+                    android:title="Type" />
+            </PreferenceCategory>
+        </PreferenceScreen>
+        <PreferenceScreen android:title="System #2" >
+            <EditTextPreference
+                android:defaultValue="9dd4264bf5dd491da73791dce4275b3b"
+                android:key="system-COS2"
+                android:summary="Unique id. of the system associated to COS2 marker"
+                android:title="ID2" />
+
+            <PreferenceCategory android:title="Sensor #1" >
+                <EditTextPreference
+                    android:key="system-COS2-sensor1-path"
+                    android:title="Path" />
+
+                <ListPreference
+                    android:entries="@array/sensor_types"
+                    android:entryValues="@array/sensor_types_keys"
+                    android:key="system-COS2-sensor1-type"
+                    android:title="Type" />
+            </PreferenceCategory>
+            <PreferenceCategory android:title="Sensor #2" >
+                <EditTextPreference
+                    android:key="system-COS2-sensor2-path"
+                    android:title="Path" />
+
+                <ListPreference
+                    android:entries="@array/sensor_types"
+                    android:entryValues="@array/sensor_types_keys"
+                    android:key="system-COS2-sensor2-type"
+                    android:title="Type" />
+            </PreferenceCategory>
+            <PreferenceCategory android:title="Sensor #3" >
+                <EditTextPreference
+                    android:key="system-COS2-sensor3-path"
+                    android:title="Path" />
+
+                <ListPreference
+                    android:entries="@array/sensor_types"
+                    android:entryValues="@array/sensor_types_keys"
+                    android:key="system-COS2-sensor3-type"
+                    android:title="Type" />
+            </PreferenceCategory>
+        </PreferenceScreen>
+    </PreferenceCategory>
 
 </PreferenceScreen>
