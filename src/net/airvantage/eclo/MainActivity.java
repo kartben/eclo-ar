@@ -284,6 +284,8 @@ public class MainActivity extends ARViewActivity implements
 
 	private MediaPlayer mMediaPlayer;
 
+	private Typeface mTypeFace;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -302,6 +304,10 @@ public class MainActivity extends ARViewActivity implements
 
 		mCallbackHandler = new MetaioSDKCallbackHandler();
 		mPaint = new Paint();
+		mPaint.setAntiAlias(true);
+		mPaint.setSubpixelText(true);
+		mTypeFace = Typeface.createFromAsset(getAssets(),
+				"digital_counter_7.ttf");
 
 		// Display the fragment as the main content.
 		getFragmentManager().beginTransaction()
@@ -1045,7 +1051,8 @@ public class MainActivity extends ARViewActivity implements
 
 			mPaint.setColor(Color.WHITE);
 			mPaint.setTextSize(140 / 3);
-			mPaint.setTypeface(Typeface.DEFAULT);
+			// mPaint.setTypeface(Typeface.DEFAULT);
+			mPaint.setTypeface(mTypeFace);
 
 			// Draw title string
 			if (value != null && value.length() > 0) {
