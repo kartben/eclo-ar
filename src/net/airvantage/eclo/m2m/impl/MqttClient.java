@@ -115,7 +115,7 @@ public class MqttClient implements IM2MClient, MqttCallback {
 			}
 		}
 
-		Log.d("MqttClient", topic + " payload: " + payload);
+		// Log.d("MqttClient", topic + " payload: " + payload);
 	}
 
 	public String getNameSpace() {
