@@ -2,8 +2,14 @@
 
     <string name="app_name">eclo AR</string>
     <string name="metaioSDKSignature">g2ofq70ZiXzyGyMkgY/hdCISCqejaceSRgvsl+6OEjs=</string>
-    <string name="airvantage_clientId">be1a35d64b6547aa8dd0a8a8f90a68dc</string>
-    <string name="airvantage_clientSecret">697ae4e54e7d4e0d976f313871a63c89</string>
+
+    <!-- QA-TRUNK -->
+<!--     <string name="airvantage_clientId">f561b0b81caf4ec3b4719bf5926193b9</string>
+    <string name="airvantage_clientSecret">bd5e0e0055c445aca7d58c7553339d82</string>
+ -->
+    <!-- EDGE -->
+    <string name="airvantage_clientId">d9fc0834e65942e58b81059f43037524</string>
+    <string name="airvantage_clientSecret">4ab22b6891f7449eb9226fabafaa5aa2</string>
     <string name="app_id">559736607426632</string>
     <string name="pref_login">login</string>
     <string name="pref_password">password</string>

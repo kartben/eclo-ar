@@ -196,7 +196,7 @@ public class LoginActivity extends Activity {
 					.getDefaultSharedPreferences(LoginActivity.this);
 
 			AirVantageClient airvantageClient = new AirVantageClient(
-					"https://na.m2mop.net/api", mEmail, mPassword,
+					"https://edge.m2mop.net/api", mEmail, mPassword,
 					getResources().getString(R.string.airvantage_clientId),
 					getResources().getString(R.string.airvantage_clientSecret));
 
@@ -213,7 +213,6 @@ public class LoginActivity extends Activity {
 							mPassword);
 					editor.apply();
 					onPostExecute(true);
-
 				}
 
 				@Override

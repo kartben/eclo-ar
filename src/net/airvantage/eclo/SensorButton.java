@@ -31,7 +31,8 @@ public class SensorButton {
 
 	String texturePath;
 	String chartPath;
-	boolean texturesNeedRefresh;
+	boolean textureNeedsRefresh;
+	boolean chartNeedsRefresh;
 	IGeometry model;
 	IGeometry chartModel;
 	float initScale = .7f;
@@ -39,7 +40,7 @@ public class SensorButton {
 	Vector3d defaultPosition;
 
 	float targetScale = .7f;
-	Vector3d targetPosition;
+	volatile Vector3d targetPosition;
 
 	int timeLinePos = -1;
 }

@@ -7,30 +7,42 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import net.airvantage.eclo.SensorButton.SENSOR_TYPE;
+import net.airvantage.eclo.m2m.IM2MAlert;
 import net.airvantage.eclo.m2m.IM2MClient;
 import net.airvantage.eclo.m2m.IM2MClient.IAuthenticationCallback;
 import net.airvantage.eclo.m2m.IM2MClient.ICallback;
 import net.airvantage.eclo.m2m.IM2MSystem;
+import net.airvantage.eclo.m2m.IM2MSystem.IAlertListener;
 import net.airvantage.eclo.m2m.IM2MSystem.IValueChangedListener;
-import net.airvantage.eclo.m2m.impl.MqttClient;
+import net.airvantage.eclo.m2m.impl.AirVantageClient;
 import net.airvantage.eclo.transitions.Cubic;
 import net.airvantage.eclo.transitions.Elastic;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.Signature;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -45,9 +57,13 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.TextToSpeech.OnInitListener;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 
 import com.facebook.FacebookRequestError;
@@ -62,6 +78,7 @@ import com.facebook.UiLifecycleHelper;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.BinaryHttpResponseHandler;
 import com.metaio.sdk.ARViewActivity;
+import com.metaio.sdk.GestureHandlerAndroid;
 import com.metaio.sdk.MetaioDebug;
 import com.metaio.sdk.jni.IGeometry;
 import com.metaio.sdk.jni.IGeometryVector;
@@ -74,7 +91,7 @@ import com.metaio.tools.SystemInfo;
 import com.metaio.tools.io.AssetsManager;
 
 public class MainActivity extends ARViewActivity implements
-		OnSharedPreferenceChangeListener, IValueChangedListener {
+		OnSharedPreferenceChangeListener, IValueChangedListener, IAlertListener {
 	private static final String SWITCH_BUTTON = "switch-button";
 
 	private static final String FACEBOOK_BUTTON = "facebook-button";
@@ -104,6 +121,8 @@ public class MainActivity extends ARViewActivity implements
 	}
 
 	private final class ImagesGenerationTask extends TimerTask {
+		private int count = 0;
+
 		@Override
 		public void run() {
 
@@ -115,6 +134,19 @@ public class MainActivity extends ARViewActivity implements
 
 				if (system == null)
 					continue;
+
+				// TODO do this elsewhere (another task?)
+				m2mClient.updateSystemAlerts(system, new ICallback() {
+					@Override
+					public void onSuccess() {
+
+					}
+
+					@Override
+					public void onError(String errorDetails, Throwable t) {
+						// TODO log
+					}
+				});
 
 				m2mClient.updateSystemData(
 						system,
@@ -131,22 +163,28 @@ public class MainActivity extends ARViewActivity implements
 							}
 						});
 
-				// for (final String path : MONITORED_PATHS) {
-				// m2mClient.updateSystemLast24HrsData(system, path,
-				// new ICallback() {
-				// @Override
-				// public void onSuccess() {
-				// updateHistoricalGraph(mButtonsByGreenhouse
-				// .get(system).get(path), system
-				// .getLast24HrsHistoricalValue(path));
-				// }
-				//
-				// @Override
-				// public void onError(String errorDetails,
-				// Throwable t) {
-				// }
-				// });
-				// }
+				// only update historical charts once every 20 calls
+				if ((count++ % 20) != 0)
+					return;
+
+				for (final String path : mButtonsByGreenhouse.get(system)
+						.keySet()) {
+					m2mClient.updateSystemLast24HrsData(system, path,
+							new ICallback() {
+								@Override
+								public void onSuccess() {
+									updateHistoricalGraph(mButtonsByGreenhouse
+											.get(system).get(path), system
+											.getLast24HrsHistoricalValue(path));
+								}
+
+								@Override
+								public void onError(String errorDetails,
+										Throwable t) {
+									// TODO log
+								}
+							});
+				}
 
 			}
 		}
@@ -156,23 +194,30 @@ public class MainActivity extends ARViewActivity implements
 		 */
 		private String updateHistoricalGraph(final SensorButton button,
 				List<String> aggData) {
+			double[] minMax = computeMinMax(aggData);
+
 			StringBuilder chartURL = new StringBuilder();
 			chartURL.append("http://chart.googleapis.com/chart");
 			chartURL.append("?chf=bg,s,FFFFFF00");
-			chartURL.append("&chxr=0,10,30");
+			// chartURL.append("&chxr=0,10,30");
 			chartURL.append("&chxs=0,ffffff,16,0,lt,000000");
 			chartURL.append("&chxt=y");
 			chartURL.append("&chs=500x200");
 			chartURL.append("&cht=lc");
-			chartURL.append("&chco=FF0000");
+			chartURL.append("&chco=AA0033");
 			chartURL.append("&chd=t:");
 			for (String val : aggData) {
-				chartURL.append(val);
+				chartURL.append(("null".equals(val)) ? "_" : val);
 				chartURL.append(",");
 			}
 			chartURL.deleteCharAt(chartURL.length() - 1);
-			chartURL.append("&chls=5,5,5");
-			chartURL.append("&chm=B,FFCC3333,0,0,0");
+			chartURL.append("&chls=3,3,5");
+			chartURL.append("&chxr=0," + minMax[0] + "," + minMax[1]);
+			chartURL.append("&chds=" + minMax[0] + "," + minMax[1]);
+			// chartURL.append("&chds=a");
+			chartURL.append("&chm=B,FFCC3317,0,0,0");
+
+			Log.d("chart", chartURL.toString());
 
 			final String chartPath = getCacheDir() + "/"
 					+ System.currentTimeMillis() + ".png";
@@ -191,7 +236,7 @@ public class MainActivity extends ARViewActivity implements
 								bos.close();
 
 								button.chartPath = chartPath;
-								button.texturesNeedRefresh = true;
+								button.chartNeedsRefresh = true;
 							} catch (FileNotFoundException e) {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
@@ -204,9 +249,40 @@ public class MainActivity extends ARViewActivity implements
 
 			return null;
 		}
+
+		private double[] computeMinMax(List<String> aggData) {
+			double[] minMax = new double[] { Double.MIN_VALUE, Double.MAX_VALUE };
+
+			for (String d : aggData) {
+				if ("null".equals(d))
+					continue;
+
+				double n = Double.parseDouble(d);
+				if (minMax[0] == Double.MIN_VALUE)
+					minMax[0] = n;
+				else
+					minMax[0] = Math.min(minMax[0], n);
+				if (minMax[1] == Double.MAX_VALUE)
+					minMax[1] = n;
+				else
+					minMax[1] = Math.max(minMax[1], n);
+			}
+
+			double range = minMax[1] - minMax[0];
+			double med = minMax[0] + range / 2;
+
+			final double RATIO = 0.6;
+
+			minMax[0] = med - range * RATIO - 1;
+			minMax[1] = med + range * RATIO + 1;
+
+			return minMax;
+		}
 	}
 
-	private static final int BUTTON_ANIMATION_DURATION = 15;
+	private static final int BUTTON_ANIMATION_DURATION = 25;
+
+	private static final String MEGAPHONE = "megaphone";
 
 	// interesting vectors
 	final Vector3d VECTOR_GREENHOUSE_ZENITH = new Vector3d(130, 160, 80);
@@ -246,6 +322,7 @@ public class MainActivity extends ARViewActivity implements
 		// Select the back facing camera by default
 		final int cameraIndex = SystemInfo
 				.getCameraIndex(CameraInfo.CAMERA_FACING_BACK);
+		// mCameraResolution = metaioSDK.startCamera(cameraIndex, 960, 720);
 		mCameraResolution = metaioSDK.startCamera(cameraIndex, 640, 480);
 	}
 
@@ -284,9 +361,30 @@ public class MainActivity extends ARViewActivity implements
 
 	private Typeface mTypeFace;
 
+	private TextToSpeech mTTS;
+
+	private IGeometry mMegaphoneModel;
+
+	private boolean mMegaphoneHasRung = false;
+
+	private GestureHandlerAndroid mGestureHandler;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		try {
+			PackageInfo info = getPackageManager().getPackageInfo(
+					this.getPackageName(), PackageManager.GET_SIGNATURES);
+			for (Signature signature : info.signatures) {
+				MessageDigest md = MessageDigest.getInstance("SHA");
+				md.update(signature.toByteArray());
+				Log.d("KeyHash:",
+						Base64.encodeToString(md.digest(), Base64.DEFAULT));
+			}
+		} catch (NameNotFoundException e) {
+		} catch (NoSuchAlgorithmException e) {
+		}
 
 		// Facebook session
 		Settings.addLoggingBehavior(LoggingBehavior.REQUESTS);
@@ -323,9 +421,53 @@ public class MainActivity extends ARViewActivity implements
 
 			@Override
 			public void onAuthFailed() {
-				// TODO Auto-generated method stub
+				new AlertDialog.Builder(MainActivity.this)
+						.setTitle("Auth. error").setMessage("Cannot login")
+						.show();
+
 			}
 		});
+
+		mTTS = new TextToSpeech(this, new OnInitListener() {
+			@Override
+			public void onInit(int status) {
+				mTTS.setLanguage(Locale.US);
+			}
+		});
+
+		// gesture recognition
+		// mGestureHandler = new GestureHandlerAndroid(metaioSDK,
+		// GestureHandler.GESTURE_DRAG);
+		// mGestureHandler.registerCallback(new IGestureHandlerCallback() {
+		// private IGeometry geometry;
+		//
+		// @Override
+		// public void onGestureEvent(EGESTURE_STATE gesture_state,
+		// IGeometryVector geometries, int groupID) {
+		// if (gesture_state == EGESTURE_STATE.EGE_TRANSLATING_END) {
+		// Collection<SensorButton> buttons = mButtonsByGreenhouse
+		// .get(mGreenhousesByCosName.get(mActiveCosName))
+		// .values();
+		// SensorButton button;
+		// button = getButtonByName(buttons, geometry.getName()
+		// .substring(0, geometry.getName().indexOf("-chart")));
+		// button.targetPosition = geometry.getTranslation();
+		// button.direction = SensorButton.DIRECTION.CHART_TO_BUTTON;
+		// button.initScale = 2f;
+		// button.targetScale = 0.7f;
+		// button.timeLinePos = 0;
+		// }
+		// }
+		//
+		// @Override
+		// public void onGeometryPicked(ETOUCH_STATE state, IGeometry geometry)
+		// {
+		// if (state == ETOUCH_STATE.ETS_TOUCH_DOWN)
+		// this.geometry = geometry;
+		// }
+		//
+		// });
+
 	}
 
 	private IM2MClient createM2MClient() {
@@ -334,14 +476,14 @@ public class MainActivity extends ARViewActivity implements
 
 		IM2MClient client;
 
-		// client = new AirVantageClient("https://na.m2mop.net/api",
-		// prefs.getString(getResources().getString(R.string.pref_login),
-		// ""), prefs.getString(
-		// getResources().getString(R.string.pref_password), ""),
-		// getResources().getString(R.string.airvantage_clientId),
-		// getResources().getString(R.string.airvantage_clientSecret));
+		client = new AirVantageClient("https://edge.m2mop.net/api",
+				prefs.getString(getResources().getString(R.string.pref_login),
+						""), prefs.getString(
+						getResources().getString(R.string.pref_password), ""),
+				getResources().getString(R.string.airvantage_clientId),
+				getResources().getString(R.string.airvantage_clientSecret));
 
-		client = new MqttClient("tcp://m2m.eclipse.org:1883");
+		// client = new MqttClient("tcp://m2m.eclipse.org:1883");
 
 		return client;
 
@@ -375,12 +517,31 @@ public class MainActivity extends ARViewActivity implements
 
 			mButtonsByGreenhouse.clear();
 
-			GreenhouseM2MSystem greenhouseM2MSystem;
 			for (int i = 1; i <= 2; i++) {
-				greenhouseM2MSystem = new GreenhouseM2MSystem(prefs.getString(
-						"system-COS" + i, "9dd4264bf5dd491da73791dce4275b3b"));
+				final GreenhouseM2MSystem greenhouseM2MSystem = new GreenhouseM2MSystem(
+						prefs.getString("system-COS" + i,
+								"9dd4264bf5dd491da73791dce4275b3b"));
+				m2mClient.updateSystemDetails(greenhouseM2MSystem,
+						new ICallback() {
+							@Override
+							public void onSuccess() {
+								Log.d("ECLO",
+										"System details updated for "
+												+ greenhouseM2MSystem
+														.getSystemDetails().uid);
+							}
+
+							@Override
+							public void onError(String errorDetails, Throwable t) {
+								Log.d("ECLO",
+										"System details update failed for "
+												+ greenhouseM2MSystem
+														.getSystemDetails().uid);
+							}
+						});
 				mGreenhousesByCosName.put("COS" + i, greenhouseM2MSystem);
 				greenhouseM2MSystem.addValueChangedListener(this);
+				greenhouseM2MSystem.addAlertListener(this);
 				Map<String, SensorButton> buttonsMap = new HashMap<String, SensorButton>();
 
 				for (int j = 1; j <= 3; j++) {
@@ -414,49 +575,6 @@ public class MainActivity extends ARViewActivity implements
 		}
 	}
 
-	/**
-	 * NFC Forum "URI Record Type Definition"
-	 * <p>
-	 * This is a mapping of "URI Identifier Codes" to URI string prefixes, per
-	 * section 3.2.2 of the NFC Forum URI Record Type Definition document.
-	 */
-	private static final String[] URI_PREFIX_MAP = new String[] { "", // 0x00
-			"http://www.", // 0x01
-			"https://www.", // 0x02
-			"http://", // 0x03
-			"https://", // 0x04
-			"tel:", // 0x05
-			"mailto:", // 0x06
-			"ftp://anonymous:anonymous@", // 0x07
-			"ftp://ftp.", // 0x08
-			"ftps://", // 0x09
-			"sftp://", // 0x0A
-			"smb://", // 0x0B
-			"nfs://", // 0x0C
-			"ftp://", // 0x0D
-			"dav://", // 0x0E
-			"news:", // 0x0F
-			"telnet://", // 0x10
-			"imap:", // 0x11
-			"rtsp://", // 0x12
-			"urn:", // 0x13
-			"pop:", // 0x14
-			"sip:", // 0x15
-			"sips:", // 0x16
-			"tftp:", // 0x17
-			"btspp://", // 0x18
-			"btl2cap://", // 0x19
-			"btgoep://", // 0x1A
-			"tcpobex://", // 0x1B
-			"irdaobex://", // 0x1C
-			"file://", // 0x1D
-			"urn:epc:id:", // 0x1E
-			"urn:epc:tag:", // 0x1F
-			"urn:epc:pat:", // 0x20
-			"urn:epc:raw:", // 0x21
-			"urn:epc:", // 0x22
-	};
-
 	@Override
 	protected void onResume() {
 		super.onResume();
@@ -485,7 +603,7 @@ public class MainActivity extends ARViewActivity implements
 	private void _doResume() {
 		mButtonsGenerationHandler = new Timer();
 		TimerTask task = new ImagesGenerationTask();
-		mButtonsGenerationHandler.schedule(task, 0L, 5000L);
+		mButtonsGenerationHandler.schedule(task, 0L, 1000L);
 
 		// For scenarios where the main activity is launched
 		// and user
@@ -511,6 +629,12 @@ public class MainActivity extends ARViewActivity implements
 
 	@Override
 	protected void onDestroy() {
+		// Close the Text to Speech Library
+		if (mTTS != null) {
+			mTTS.stop();
+			mTTS.shutdown();
+		}
+
 		super.onDestroy();
 		PreferenceManager.getDefaultSharedPreferences(this)
 				.unregisterOnSharedPreferenceChangeListener(this);
@@ -525,6 +649,7 @@ public class MainActivity extends ARViewActivity implements
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
+		super.onCreateOptionsMenu(menu);
 		getMenuInflater().inflate(R.menu.settings, menu);
 		// Intent i = new Intent(this, SettingsActivity.class);
 		// startActivityForResult(i, 1);
@@ -607,8 +732,30 @@ public class MainActivity extends ARViewActivity implements
 				return;
 
 			int offset = 0;
+			GreenhouseM2MSystem activeSystem = mGreenhousesByCosName
+					.get(mActiveCosName);
+
+			// check alerts
+			if (activeSystem.getAlerts().isEmpty()) {
+				mMegaphoneModel.setVisible(false);
+				mMegaphoneHasRung = false;
+			}
+
+			if (!activeSystem.getAlerts().isEmpty()
+					&& !mMegaphoneModel.isVisible()) {
+				mMegaphoneModel.setVisible(true);
+
+				if (!mMegaphoneHasRung) {
+					mTTS.speak(activeSystem.getAlerts().iterator().next()
+							.getMessage()
+					/* + ". You can acknowledge by pressing the megaphone." */,
+							TextToSpeech.QUEUE_FLUSH, null);
+					mMegaphoneHasRung = true;
+				}
+			}
+
 			Map<String, SensorButton> buttons = mButtonsByGreenhouse
-					.get(mGreenhousesByCosName.get(mActiveCosName));
+					.get(activeSystem);
 			for (SensorButton button : buttons.values()) {
 				if (button.model == null) {
 
@@ -628,11 +775,11 @@ public class MainActivity extends ARViewActivity implements
 					}
 				} else {
 					// update texture with new image
-					if (button.texturesNeedRefresh) {
+					if (button.textureNeedsRefresh) {
 						// MetaioDebug.log("refresh texture for button "
 						// + button.name);
 						button.model.setTexture(button.texturePath);
-						button.texturesNeedRefresh = false;
+						button.textureNeedsRefresh = false;
 					}
 				}
 
@@ -641,15 +788,21 @@ public class MainActivity extends ARViewActivity implements
 						IGeometry model;
 						model = metaioSDK
 								.createGeometryFromImage(button.chartPath);
-						model.setName(button.name + "-chart");
-						model.setScale(1f);
-						model.setTranslation(button.initPosition);
-						model.setVisible(false);
-						button.chartModel = model;
+						if (model != null) {
+							model.setName(button.name + "-chart");
+							model.setScale(1f);
+							model.setTranslation(button.initPosition);
+							model.setVisible(false);
+							// mGestureHandler.addObject(model, 1);
+
+							button.chartModel = model;
+						}
 					}
 				} else {
-					if (button.texturesNeedRefresh)
+					if (button.chartNeedsRefresh) {
 						button.chartModel.setTexture(button.chartPath);
+						button.chartNeedsRefresh = false;
+					}
 				}
 
 				animate(buttons.values(), button);
@@ -769,28 +922,77 @@ public class MainActivity extends ARViewActivity implements
 							+ switchModelFile);
 			}
 
+			String megaphoneModelFile = AssetsManager
+					.getAssetPath("megaphone.obj");
+			if (megaphoneModelFile != null) {
+				mMegaphoneModel = metaioSDK.createGeometry(megaphoneModelFile);
+				if (mMegaphoneModel != null) {
+					mMegaphoneModel.setName(MEGAPHONE);
+					// Set geometry properties
+					mMegaphoneModel.setScale(new Vector3d(50f, 50f, 50f));
+					mMegaphoneModel.setTranslation(new Vector3d(160, 250, 150));
+					mMegaphoneModel.setRotation(new Rotation(0f,
+							(float) Math.PI / 2, 0f));
+					mMegaphoneModel.setVisible(false);
+
+				} else
+					MetaioDebug.log(Log.ERROR, "Error loading geometry: "
+							+ megaphoneModelFile);
+			}
+
 		} catch (Exception e) {
 
 		}
 	}
 
 	@Override
+	public boolean onTouch(View v, MotionEvent event) {
+		super.onTouch(v, event);
+		// mGestureHandler.onTouch(v, event);
+		return true;
+	}
+
+	@Override
 	protected void onGeometryTouched(final IGeometry geometry) {
-		if (SWITCH_BUTTON.equals(geometry.getName())) {
-			GreenhouseM2MSystem gh = mGreenhousesByCosName.get(mActiveCosName);
-			m2mClient.sendData(gh, "switch", "1", new ICallback() {
+		final GreenhouseM2MSystem currentSystem = mGreenhousesByCosName
+				.get(mActiveCosName);
+
+		if (MEGAPHONE.equals(geometry.getName())) {
+			// acknowledge the alerts
+			m2mClient.acknowledgeAlert(currentSystem, currentSystem.getAlerts()
+					.iterator().next(), new ICallback() {
+
 				@Override
 				public void onSuccess() {
-					mMediaPlayer.start();
-					geometry.setRotation(
-							new Rotation(0f, 0f, (float) (Math.PI)), true);
+					if (currentSystem.getAlerts().isEmpty())
+						mMegaphoneModel.setVisible(false);
+					mMegaphoneHasRung = false;
+
 				}
 
 				@Override
 				public void onError(String errorDetails, Throwable t) {
-					Log.d(getPackageName(), errorDetails, t);
+
 				}
 			});
+
+		}
+
+		if (SWITCH_BUTTON.equals(geometry.getName())) {
+			m2mClient.sendData(currentSystem, "toggleRoof",
+					"{ \"state\": true}", new ICallback() {
+						@Override
+						public void onSuccess() {
+							mMediaPlayer.start();
+							geometry.setRotation(new Rotation(0f, 0f,
+									(float) (Math.PI)), true);
+						}
+
+						@Override
+						public void onError(String errorDetails, Throwable t) {
+							Log.d(getPackageName(), errorDetails, t);
+						}
+					});
 
 			return;
 		}
@@ -811,13 +1013,12 @@ public class MainActivity extends ARViewActivity implements
 			button.direction = SensorButton.DIRECTION.CHART_TO_BUTTON;
 			button.initScale = 2f;
 			button.targetScale = 0.7f;
-			button.targetPosition = button.defaultPosition;
+			button.timeLinePos = 0;
 		} else {
 			button = getButtonByName(buttons, geometry.getName());
 			onClickSensorButton(button);
+			button.timeLinePos = 0;
 		}
-
-		button.timeLinePos = 0;
 
 	}
 
@@ -848,17 +1049,27 @@ public class MainActivity extends ARViewActivity implements
 					JSONObject params = new JSONObject();
 					// params.putString("type", "checkmyeclo:greenhouse");
 					try {
+						GreenhouseM2MSystem activeSystem = mGreenhousesByCosName
+								.get(mActiveCosName);
+
 						params.put("app_id", "559736607426632");
-						params.put("title", "");
+						params.put("title",
+								activeSystem.getSystemDetails().name);
 						params.put("image",
 								"http://airvantage.github.io/resources/img/tutorials/eclo.png");
 						params.put("description", "");
 
 						JSONObject data = new JSONObject();
 
-						data.put("temperature", 10);
-						data.put("luminosity", 10);
-						data.put("humidity", 10);
+						DecimalFormat df = new DecimalFormat("###.##",
+								new DecimalFormatSymbols(Locale.ENGLISH));
+
+						data.put("temperature",
+								df.format(activeSystem.getTemperature()));
+						data.put("luminosity",
+								df.format(activeSystem.getLuminosity()));
+						data.put("humidity",
+								df.format(activeSystem.getHumidity()));
 
 						params.put("data", data);
 
@@ -879,7 +1090,7 @@ public class MainActivity extends ARViewActivity implements
 
 						while (screenshot == null) {
 							try {
-								Thread.sleep(100);
+								Thread.sleep(20);
 							} catch (InterruptedException e) {
 							}
 						}
@@ -1051,7 +1262,7 @@ public class MainActivity extends ARViewActivity implements
 		}
 		button.texturePath = createTexture(button.type, newValue
 				+ button.type.unit);
-		button.texturesNeedRefresh = true;
+		button.textureNeedsRefresh = true;
 
 		// get historical agg data
 		if (button.chartPath != null) {
@@ -1060,6 +1271,12 @@ public class MainActivity extends ARViewActivity implements
 				file.delete();
 			}
 		}
+	}
+
+	@Override
+	public void newAlert(IM2MSystem system, IM2MAlert alert) {
+		// TODO Auto-generated method stub
+
 	}
 
 	private String createTexture(SENSOR_TYPE type, String value) {
