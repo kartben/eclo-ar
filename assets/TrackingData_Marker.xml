@@ -16,7 +16,7 @@
                 <SensorCosID>Marker1</SensorCosID>
                 <Parameters>
                     <MarkerParameters>
-                        <Size>60</Size>
+                        <Size>36</Size>
                         <MatrixID>1</MatrixID>
                     </MarkerParameters>
                 </Parameters>
@@ -26,7 +26,7 @@
 				<SensorCosID>Marker2</SensorCosID>
 				<Parameters>
 					<MarkerParameters>
-						<Size>60</Size>
+						<Size>36</Size>
 						<MatrixID>2</MatrixID>
 					</MarkerParameters>
 				</Parameters>
@@ -71,8 +71,8 @@
 				</HandEyeCalibration>
 				<COSOffset>
 					<TranslationOffset>
-						<x>-190</x>
-						<y>-30</y>
+						<x>-116</x>
+						<y>-18</y>
 						<z>-150</z>
 					</TranslationOffset>
 					<RotationOffset>
