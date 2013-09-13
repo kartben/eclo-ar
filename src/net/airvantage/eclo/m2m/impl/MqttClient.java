@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import net.airvantage.eclo.m2m.IM2MAlert;
 import net.airvantage.eclo.m2m.IM2MClient;
 import net.airvantage.eclo.m2m.IM2MSystem;
 
@@ -68,6 +69,19 @@ public class MqttClient implements IM2MClient, MqttCallback {
 	@Override
 	public void updateSystemLast24HrsData(IM2MSystem system, String path,
 			ICallback callback) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void updateSystemAlerts(IM2MSystem system, ICallback callback) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void acknowledgeAlert(IM2MSystem currentSystem, IM2MAlert im2mAlert,
+			ICallback iCallback) {
 		// TODO Auto-generated method stub
 
 	}

@@ -1,11 +1,16 @@
 package net.airvantage.eclo.m2m;
 
 import java.util.List;
+import java.util.Set;
 
 public interface IM2MSystem {
 
 	public interface IValueChangedListener {
 		void valueChanged(IM2MSystem system, String path, String newValue);
+	}
+
+	public interface IAlertListener {
+		void newAlert(IM2MSystem system, IM2MAlert alert);
 	}
 
 	public static class SystemDetails {
@@ -19,6 +24,8 @@ public interface IM2MSystem {
 
 	SystemDetails getSystemDetails();
 
+	Set<IM2MAlert> getAlerts();
+
 	String getValue(String path);
 
 	void setValue(String path, String newValue);
@@ -30,4 +37,8 @@ public interface IM2MSystem {
 	void addValueChangedListener(IValueChangedListener listener);
 
 	void removeValueChangedListener(IValueChangedListener listener);
+
+	void addAlertListener(IAlertListener listener);
+
+	void removeAlertListener(IAlertListener listener);
 }

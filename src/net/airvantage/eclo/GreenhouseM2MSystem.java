@@ -4,9 +4,9 @@ import net.airvantage.eclo.m2m.AbstractM2MSystem;
 
 public class GreenhouseM2MSystem extends AbstractM2MSystem {
 
-	private static final String TEMPERATURE_PATH = "greenhouse.data.temperature";
-	private static final String LUMINOSITY_PATH = "greenhouse.data.luminosity";
-	private static final String HUMIDITY_PATH = "greenhouse.data.humidity";
+	private static final String TEMPERATURE_PATH = "greenhouse.temperature";
+	private static final String LUMINOSITY_PATH = "greenhouse.luminosity";
+	private static final String HUMIDITY_PATH = "greenhouse.humidity";
 
 	public GreenhouseM2MSystem(String uid) {
 		super(uid);

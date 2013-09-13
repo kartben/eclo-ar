@@ -66,9 +66,14 @@ public interface IM2MClient {
 	void updateSystemLast24HrsData(final IM2MSystem system, final String path,
 			final ICallback callback);
 
-	void sendData(final IM2MSystem system, final String path, String value, final ICallback callback);
-	
-	
+	void updateSystemAlerts(final IM2MSystem system, final ICallback callback);
+
+	void acknowledgeAlert(final IM2MSystem currentSystem,
+			final IM2MAlert im2mAlert, final ICallback iCallback);
+
+	void sendData(final IM2MSystem system, final String path, String value,
+			final ICallback callback);
+
 	boolean supportsUnsollicitedResponses();
 
 	/**
